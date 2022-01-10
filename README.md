@@ -69,14 +69,12 @@ Help Options:
       -r, --renew-before=      Renew certificate time reserve (default: 720h) [$RENEW_BEFORE]
       -e, --email=             Email for contact [$EMAIL]
       -p, --provider=          DNS challenge provider [$PROVIDER]
-      -d, --dns=               Custom resolvers (default: 8.8.8.8) [$DNS]
+      -D, --dns=               Custom resolvers (default: 8.8.8.8) [$DNS]
       -t, --timeout=           DNS challenge timeout (default: 1m) [$TIMEOUT]
+      -d, --domains=           Domains names to issue [$DOMAINS]
 
     Synology Client:
           --synology.user=     Synology username [$SYNOLOGY_USER]
           --synology.password= Synology password [$SYNOLOGY_PASSWORD]
           --synology.url=      Synology URL (default: http://localhost:5000) [$SYNOLOGY_URL]
-
-[auto command arguments]
-  domain:                      Comma-separated domain names
 ```

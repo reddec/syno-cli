@@ -33,11 +33,9 @@ type CertsAuto struct {
 	RenewBefore time.Duration `short:"r" long:"renew-before" env:"RENEW_BEFORE" description:"Renew certificate time reserve" default:"720h"`
 	Email       string        `short:"e" long:"email" env:"EMAIL" description:"Email for contact"`
 	Provider    string        `short:"p" long:"provider" env:"PROVIDER" description:"DNS challenge provider" required:"true" `
-	DNS         []string      `short:"d" long:"dns" env:"DNS" description:"Custom resolvers" default:"8.8.8.8"`
+	DNS         []string      `short:"D" long:"dns" env:"DNS" env-delim:","  description:"Custom resolvers" default:"8.8.8.8"`
 	Timeout     time.Duration `short:"t" long:"timeout" env:"TIMEOUT" description:"DNS challenge timeout" default:"1m"`
-	Arg         struct {
-		Domains []string `positional-arg-name:"domain" env:"DOMAINS" description:"Comma-separated domain names" required:"true"`
-	} `positional-args:"true"`
+	Domains     []string      `short:"d" long:"domains" env:"DOMAINS" env-delim:","  description:"Domains names to issue" required:"true"`
 }
 
 func (lc *CertsAuto) Execute([]string) error {
@@ -74,7 +72,7 @@ func (lc *CertsAuto) Execute([]string) error {
 
 func (lc *CertsAuto) issueOrRenewCerts(ctx context.Context, lgc *lego.Client) ([]*certificate.Resource, error) {
 	var certs []*certificate.Resource
-	for _, domain := range lc.Arg.Domains {
+	for _, domain := range lc.Domains {
 		cert, err := loadCert(lc.CacheDir, domain)
 		if errors.Is(err, os.ErrNotExist) {
 			log.Println("issuing new certificate for domain", domain)
