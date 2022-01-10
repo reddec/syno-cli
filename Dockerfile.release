@@ -1,5 +1,5 @@
 FROM alpine:3.15
-ENV URL=http://host.docker.internal:5000 \
+ENV SYNOLOGY_URL=http://host.docker.internal:5000 \
     CACHE_DIR=/var/syno \
     PROVIDER=\
     DOMAINS=
