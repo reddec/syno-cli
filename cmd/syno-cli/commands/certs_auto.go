@@ -97,7 +97,7 @@ func (lc *CertsAuto) issueOrRenewCerts(ctx context.Context, lgc *lego.Client) ([
 			if err != nil {
 				return nil, fmt.Errorf("issue new certificate for %s: %w", domain, err)
 			}
-		} else if crt.NotAfter.Sub(time.Now()) <= lc.RenewBefore {
+		} else if time.Until(crt.NotAfter) <= lc.RenewBefore {
 			// renew if soon expired
 			cert, err = lc.renewCert(cert, lgc)
 			if err != nil {

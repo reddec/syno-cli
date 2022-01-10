@@ -1,6 +1,7 @@
 run:
   tests: false
-
+  skip-dirs:
+    - cmd
 linters:
   disable:
     - lll
