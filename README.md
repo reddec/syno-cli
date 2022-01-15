@@ -4,6 +4,8 @@ Unofficial wrapper over Synology API in Go.
 
 Focus on administrative tasks.
 
+* Tutorial for [automatic SSL certificates on NAS](https://reddec.net/articles/how-to-get-ssl-on-synology/)
+
 Supports:
 
 * X86-64 and ARM [builds](https://github.com/reddec/syno-cli/releases/latest)
