@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -190,17 +191,18 @@ func (cl *Client) callAPI(ctx context.Context, apiName, method string, params ma
 	return cl.doPost(ctx, "/webapi/"+info.Path, queryParams, params, out)
 }
 
+// deprecated, use directCall instead
 func (cl *Client) doPost(ctx context.Context, path string, queryParams map[string]interface{}, params map[string]interface{}, out interface{}) error {
 	var contentType string
 	var content io.ReadCloser
 	if needStreaming(params) {
-		contentType, content = streamData(params)
+		contentType, content = streamData(mapToFields(params))
 	} else {
-		contentType, content = plainData(params)
+		contentType, content = plainData(mapToFields(params))
 	}
 	defer content.Close()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cl.baseURL+path+"?"+joinParams(queryParams), content)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cl.baseURL+path+"?"+joinParams(mapToFields(queryParams)), content)
 	if err != nil {
 		return fmt.Errorf("prepare request: %w", err)
 	}
@@ -235,16 +237,85 @@ func (cl *Client) doPost(ctx context.Context, path string, queryParams map[strin
 	return nil
 }
 
-func plainData(params map[string]interface{}) (string, io.ReadCloser) {
+func (cl *Client) directCall(ctx context.Context, apiName string, method string, params []field) (*http.Response, error) {
+	info, err := cl.APIVersion(ctx, apiName)
+	if err != nil {
+		return nil, fmt.Errorf("get API %s version: %w", apiName, err)
+	}
+
+	params = append([]field{
+		{Name: "api", Value: apiName},
+		{Name: "version", Value: info.MaxVersion},
+		{Name: "method", Value: method},
+		{Name: "_sid", Value: cl.sid},
+	}, params...)
+
+	var contentType string
+	var content io.ReadCloser
+	if needStreamingIter(params) {
+		contentType, content = streamData(params)
+	} else {
+		contentType, content = plainData(params)
+	}
+	defer content.Close()
+
+	requestURL := cl.baseURL + "/webapi/" + info.Path
+	log.Println(requestURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, io.TeeReader(content, os.Stderr))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("X-Syno-Token", cl.token)
+
+	res, err := cl.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("call API: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode/100 != 2 {
+		_ = res.Body.Close()
+		return nil, fmt.Errorf("status %d: %w", res.StatusCode, ErrBadStatus)
+	}
+
+	// try to parse body as API response
+	var buffer bytes.Buffer
+	if err := asApiError(io.TeeReader(res.Body, &buffer)); err != nil {
+		_ = res.Body.Close()
+		return nil, fmt.Errorf("application API error: %w", err)
+	}
+	res.Body = &readCloser{
+		Reader: io.MultiReader(&buffer, res.Body),
+		Closer: res.Body,
+	}
+
+	return res, nil
+}
+
+func asApiError(data io.Reader) error {
+	var rawResponse apiResponse
+
+	err := json.NewDecoder(data).Decode(&rawResponse)
+	if err != nil {
+		return nil
+	}
+	if !rawResponse.Success {
+		return rawResponse.Error
+	}
+	return nil
+}
+
+func plainData(params []field) (string, io.ReadCloser) {
 	return "application/x-www-form-urlencoded", io.NopCloser(strings.NewReader(joinParams(params)))
 }
 
-func streamData(params map[string]interface{}) (string, io.ReadCloser) {
+func streamData(fields []field) (string, io.ReadCloser) {
 	reader, writer := io.Pipe()
 	mp := multipart.NewWriter(writer)
 
 	go func() {
-		err := streamMultipart(params, mp)
+		err := streamMultipart(fields, mp)
 		if err == nil {
 			err = mp.Close()
 		}
@@ -254,76 +325,92 @@ func streamData(params map[string]interface{}) (string, io.ReadCloser) {
 	return "multipart/form-data; boundary=" + mp.Boundary(), reader
 }
 
-func joinParams(params map[string]interface{}) string {
+func joinParams(params []field) string {
 	var buffer bytes.Buffer
-	for key, value := range params {
+	for _, field := range params {
 		if buffer.Len() > 0 {
 			buffer.WriteRune('&')
 		}
-		buffer.WriteString(url.QueryEscape(key))
+		buffer.WriteString(url.QueryEscape(field.Name))
 		buffer.WriteRune('=')
-		buffer.WriteString(url.QueryEscape(fmt.Sprint(value)))
+		buffer.WriteString(url.QueryEscape(fmt.Sprint(field.Value)))
 	}
 	return buffer.String()
 }
 
-func streamMultipart(params map[string]interface{}, w *multipart.Writer) error {
-	for key, value := range params {
+type field struct {
+	Name  string
+	Value interface{} // Reader, fileAttachment, []byte, string, else (Sprint'able)
+}
+
+func streamMultipart(fields []field, w *multipart.Writer) error {
+	for _, field := range fields {
 		var dest io.Writer
 		var source io.Reader
-		switch v := value.(type) {
+		switch v := field.Value.(type) {
 		case io.Reader:
-			out, err := w.CreateFormField(key)
+			out, err := w.CreateFormField(field.Name)
 			if err != nil {
-				return fmt.Errorf("create part for %s: %w", key, err)
+				return fmt.Errorf("create part for %s: %w", field.Name, err)
 			}
 			dest = out
 			source = v
 		case fileAttachment:
-			out, err := w.CreateFormFile(key, v.FileName)
+			out, err := w.CreateFormFile(field.Name, v.FileName)
 			if err != nil {
-				return fmt.Errorf("create part for %s: %w", key, err)
+				return fmt.Errorf("create part for %s: %w", field.Name, err)
 			}
 			dest = out
 			source = v.Reader
 		case []byte:
-			out, err := w.CreateFormField(key)
+			out, err := w.CreateFormField(field.Name)
 			if err != nil {
-				return fmt.Errorf("create part for %s: %w", key, err)
+				return fmt.Errorf("create part for %s: %w", field.Name, err)
 			}
 			dest = out
 			source = bytes.NewReader(v)
 		case string:
 			h := make(textproto.MIMEHeader)
-			h.Set("Content-Disposition", `form-data; name=`+strconv.Quote(key))
+			h.Set("Content-Disposition", `form-data; name=`+strconv.Quote(field.Name))
 			h.Set("Content-Type", "text/plain")
 
 			out, err := w.CreatePart(h)
 			if err != nil {
-				return fmt.Errorf("create part for %s: %w", key, err)
+				return fmt.Errorf("create part for %s: %w", field.Name, err)
 			}
 			dest = out
 			source = strings.NewReader(v)
 		default:
 			h := make(textproto.MIMEHeader)
-			h.Set("Content-Disposition", `form-data; name=`+strconv.Quote(key))
+			h.Set("Content-Disposition", `form-data; name=`+strconv.Quote(field.Name))
 			out, err := w.CreatePart(h)
 			if err != nil {
-				return fmt.Errorf("create part for %s: %w", key, err)
+				return fmt.Errorf("create part for %s: %w", field.Name, err)
 			}
 			dest = out
 			source = strings.NewReader(fmt.Sprint(v))
 		}
 		if _, err := io.Copy(dest, source); err != nil {
-			return fmt.Errorf("copy content for part %s: %w", key, err)
+			return fmt.Errorf("copy content for part %s: %w", field.Name, err)
 		}
 	}
 	return nil
 }
 
+// deprecated
 func needStreaming(params map[string]interface{}) bool {
 	for _, v := range params {
 		switch v.(type) {
+		case io.Reader, *fileAttachment, fileAttachment:
+			return true
+		}
+	}
+	return false
+}
+
+func needStreamingIter(params []field) bool {
+	for _, f := range params {
+		switch f.Value.(type) {
 		case io.Reader, *fileAttachment, fileAttachment:
 			return true
 		}
@@ -353,4 +440,29 @@ type RemoteError struct {
 
 func (e *RemoteError) Error() string {
 	return "API error code: " + strconv.FormatInt(e.Code, 10) //nolint:gomnd
+}
+
+type readCloser struct {
+	io.Reader
+	io.Closer
+}
+
+func fieldsToMap(fields []field) map[string]interface{} {
+	mp := make(map[string]interface{}, len(fields))
+	for _, v := range fields {
+		mp[v.Name] = v.Value
+	}
+	return mp
+}
+
+// deprecated, used for compatibility only
+func mapToFields(fields map[string]interface{}) []field {
+	l := make([]field, 0, len(fields))
+	for k, v := range fields {
+		l = append(l, field{
+			Name:  k,
+			Value: v,
+		})
+	}
+	return l
 }

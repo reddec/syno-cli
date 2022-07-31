@@ -80,3 +80,11 @@ Help Options:
           --synology.password= Synology password [$SYNOLOGY_PASSWORD]
           --synology.url=      Synology URL (default: http://localhost:5000) [$SYNOLOGY_URL]
 ```
+
+# Download station
+
+In progress.
+
+API:
+
+- create task
