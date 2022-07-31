@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -19,17 +20,67 @@ type DownloadTask struct {
 	Destination   string    // Optional. Download destination path starting with a shared folder
 }
 
+type DownloadTasks struct {
+	Total  int64 `json:"total"`
+	Offset int64 `json:"offset"`
+	Tasks  []struct {
+		Id         string `json:"id"`
+		Type       string `json:"type"`
+		Username   string `json:"username"`
+		Title      string `json:"title"`
+		Size       int64  `json:"size"`
+		Status     string `json:"status"`
+		Additional struct {
+			Detail struct {
+				CreateTime  int64  `json:"create_time"`
+				Destination string `json:"destination"`
+				Priority    string `json:"priority"`
+				Uri         string `json:"uri"`
+			} `json:"detail"`
+		} `json:"additional"`
+	} `json:"tasks"`
+}
+
+// DownloadStation API
+type DownloadStation struct {
+	cl *Client
+}
+
+// List all download tasks in NAS. Implies 'detail' feature. Limit -1 means all.
+func (ds *DownloadStation) List(ctx context.Context, offset, limit int) (*DownloadTasks, error) {
+	if err := ds.cl.Login(ctx); err != nil {
+		return nil, fmt.Errorf("login: %w", err)
+	}
+	res, err := ds.cl.directCall(ctx, `SYNO.DownloadStation.Task`, `list`, []field{
+		{Name: "offset", Value: offset},
+		{Name: "limit", Value: limit},
+		{Name: "additional", Value: "detail"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("call: %w", err)
+	}
+	defer res.Body.Close()
+	var response struct {
+		Data DownloadTasks `json:"data"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	return &response.Data, nil
+}
+
 // Download remote data from HTTP/FTP/magnet/ED2K links or the file path starting with a shared folder.
-// This is simplified version of CreateDownloadTask.
-func (cl *Client) Download(ctx context.Context, destination string, urls ...string) error {
-	return cl.CreateDownloadTask(ctx, DownloadTask{
+// This is simplified version of Create.
+func (ds *DownloadStation) Download(ctx context.Context, destination string, urls ...string) error {
+	return ds.Create(ctx, DownloadTask{
 		URL:         urls,
 		Destination: destination,
 	})
 }
 
-func (cl *Client) CreateDownloadTask(ctx context.Context, task DownloadTask) error {
-	if err := cl.Login(ctx); err != nil {
+// Create download task in DownloadStation based on configuration.
+func (ds *DownloadStation) Create(ctx context.Context, task DownloadTask) error {
+	if err := ds.cl.Login(ctx); err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
 	var params []field
@@ -44,7 +95,7 @@ func (cl *Client) CreateDownloadTask(ctx context.Context, task DownloadTask) err
 		// it must go last
 		params = append(params, field{Name: "file", Value: task.File})
 	}
-	res, err := cl.directCall(ctx, `SYNO.DownloadStation.Task`, `create`, params)
+	res, err := ds.cl.directCall(ctx, `SYNO.DownloadStation.Task`, `create`, params)
 	if err != nil {
 		return fmt.Errorf("call API: %w", err)
 	}

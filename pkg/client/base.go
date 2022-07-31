@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -163,6 +162,11 @@ func (cl *Client) Login(ctx context.Context) error {
 	return nil
 }
 
+// DownloadStation API
+func (cl *Client) DownloadStation() *DownloadStation {
+	return &DownloadStation{cl: cl}
+}
+
 func (cl *Client) callAPI(ctx context.Context, apiName, method string, params map[string]interface{}, out interface{}) error {
 	info, err := cl.APIVersion(ctx, apiName)
 	if err != nil {
@@ -249,6 +253,7 @@ func (cl *Client) directCall(ctx context.Context, apiName string, method string,
 		{Name: "method", Value: method},
 		{Name: "_sid", Value: cl.sid},
 	}, params...)
+	requestURL := cl.baseURL + "/webapi/" + info.Path
 
 	var contentType string
 	var content io.ReadCloser
@@ -259,9 +264,7 @@ func (cl *Client) directCall(ctx context.Context, apiName string, method string,
 	}
 	defer content.Close()
 
-	requestURL := cl.baseURL + "/webapi/" + info.Path
-	log.Println(requestURL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, io.TeeReader(content, os.Stderr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, content)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}

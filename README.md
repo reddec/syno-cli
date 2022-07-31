@@ -85,6 +85,7 @@ Help Options:
 
 In progress.
 
-API:
+API supported:
 
 - create task
+- list tasks
