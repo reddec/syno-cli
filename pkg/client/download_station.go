@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 )
 
@@ -100,7 +99,6 @@ func (ds *DownloadStation) Create(ctx context.Context, task DownloadTask) error 
 		return fmt.Errorf("call API: %w", err)
 	}
 	defer res.Body.Close()
-	io.Copy(os.Stderr, res.Body)
 	return nil
 }
 
