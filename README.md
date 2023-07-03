@@ -79,6 +79,7 @@ Help Options:
           --synology.user=     Synology username [$SYNOLOGY_USER]
           --synology.password= Synology password [$SYNOLOGY_PASSWORD]
           --synology.url=      Synology URL (default: http://localhost:5000) [$SYNOLOGY_URL]
+          --synology.insecure  Disable TLS (HTTPS) verification [$SYNOLOGY_INSECURE]
 ```
 
 # Download station
