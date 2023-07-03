@@ -67,7 +67,7 @@ func New(cfg Config) *Client {
 		cfg.Client = http.DefaultClient
 	}
 	if cfg.URL == "" {
-		cfg.URL = "http://localhost:500"
+		cfg.URL = "http://localhost:5000"
 	} else {
 		cfg.URL = strings.TrimRight(cfg.URL, "/")
 	}
