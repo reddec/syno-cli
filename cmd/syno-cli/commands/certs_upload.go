@@ -59,7 +59,7 @@ func (lc *CertsUpload) Execute([]string) error {
 
 	info, err := syno.UploadCert(ctx, client.NewCertificate{
 		Name:      lc.Args.Name,
-		AsDefault: false,
+		AsDefault: lc.Default,
 		Cert:      certFile,
 		CA:        caFile,
 		Key:       privateFile,
