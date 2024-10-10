@@ -22,5 +22,7 @@ gen-certs: test-data
 generate:
 	go generate ./...
 
+test:
+	go test -v ./...
 
-.PHONY: generate
+.PHONY: generate test

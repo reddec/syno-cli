@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -72,5 +71,6 @@ func TestDownloadStation_List(t *testing.T) {
 	list, err := syno.DownloadStation().List(ctx, 0, -1)
 	require.NoError(t, err)
 	require.NotEmpty(t, list)
-	log.Printf("%+v", *list)
+
+	t.Logf("%+v", *list)
 }

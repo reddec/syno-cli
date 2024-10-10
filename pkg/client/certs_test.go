@@ -2,7 +2,7 @@ package client_test
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +22,7 @@ func TestClient_ListCerts(t *testing.T) {
 	list, err := syno.ListCerts(ctx)
 	require.NoError(t, err)
 	assert.NotEmpty(t, list)
-	log.Println(list)
+	slog.Info("certificates fetched", "certs", list)
 }
 
 func TestClient_UploadCert(t *testing.T) {

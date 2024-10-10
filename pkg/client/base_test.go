@@ -3,7 +3,7 @@ package client_test
 import (
 	"bufio"
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -44,7 +44,7 @@ func environ() func(string) string {
 
 	f, err := os.Open("../../.env")
 	if err != nil {
-		log.Println("env not loaded:", err)
+		slog.Error("env not loaded", "error", err)
 		return os.Getenv
 	}
 	defer f.Close()

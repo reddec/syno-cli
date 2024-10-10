@@ -12,7 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -23,6 +23,7 @@ import (
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/providers/dns"
 	"github.com/go-acme/lego/v4/registration"
+
 	"github.com/reddec/syno-cli/pkg/client"
 )
 
@@ -47,21 +48,21 @@ func (lc *CertsAuto) Execute([]string) error {
 		return err
 	}
 
-	log.Println("setting challenger for", lc.Provider)
+	slog.Info("setting challenger", "provider", lc.Provider)
 	if err := lc.setupChallenge(account); err != nil {
 		return err
 	}
 
-	log.Println("start initial setup")
+	slog.Info("start initial setup")
 
 	for {
-		log.Println("issuing or renewing certificates if needed")
+		slog.Info("issuing or renewing certificates if needed")
 		if list, err := lc.issueOrRenewCerts(ctx, account); err != nil {
-			log.Println("failed issue certs:", err)
+			slog.Error("failed issue certs", "error", err)
 		} else if err := lc.pushToSynology(ctx, list); err != nil {
-			log.Println("failed push to Synology:", err)
+			slog.Error("failed push to Synology", "error", err)
 		}
-		log.Println("done, next check after 1 hour")
+		slog.Info("done, next check after 1 hour")
 		select {
 		case <-ctx.Done():
 			return nil
@@ -75,7 +76,7 @@ func (lc *CertsAuto) issueOrRenewCerts(ctx context.Context, lgc *lego.Client) ([
 	for _, domain := range lc.Domains {
 		cert, err := loadCert(lc.CacheDir, domain)
 		if errors.Is(err, os.ErrNotExist) {
-			log.Println("issuing new certificate for domain", domain)
+			slog.Info("issuing new certificate", "domain", domain, "reason", "no certificate")
 			// issue
 			cert, err = lc.issueCert(domain, lgc)
 			if err != nil {
@@ -88,7 +89,7 @@ func (lc *CertsAuto) issueOrRenewCerts(ctx context.Context, lgc *lego.Client) ([
 			// parsing failed
 			return certs, err
 		} else if time.Now().After(crt.NotAfter) {
-			log.Println("issuing new certificate for domain", domain, "because the old one expired")
+			slog.Info("issuing new certificate", "domain", domain, "reason", "the old one expired")
 			// expired
 			// issue
 			cert, err = lc.issueCert(domain, lgc)
@@ -127,7 +128,7 @@ func (lc *CertsAuto) pushToSynology(ctx context.Context, certs []*certificate.Re
 	}
 
 	for _, res := range certs {
-		log.Println("pushing certs of", res.Domain, "to Synology")
+		slog.Info("pushing certs to Synology", "domain", res.Domain)
 		status, err := syno.UploadCert(ctx, client.NewCertificate{
 			Name: res.Domain,
 			Cert: bytes.NewReader(res.Certificate),
@@ -137,7 +138,7 @@ func (lc *CertsAuto) pushToSynology(ctx context.Context, certs []*certificate.Re
 		if err != nil {
 			return fmt.Errorf("push to synology for domain %s: %w", res.Domain, err)
 		}
-		log.Println("certificate ID:", status.CertificateID, "server restarted:", status.ServerRestarted)
+		slog.Info("certificate uploaded", "certificate_id", status.CertificateID, "server_restarted", status.ServerRestarted)
 	}
 
 	return nil
@@ -181,14 +182,14 @@ func (lc *CertsAuto) getOrCreateAccount() (*lego.Client, error) {
 	accountFile := filepath.Join(lc.CacheDir, lc.Email+".json")
 	account, err := loadAccount(accountFile)
 	if err == nil {
-		log.Println("using saved account")
+		slog.Info("we are using saved account")
 		return lego.NewClient(lego.NewConfig(account))
 	}
 
 	if !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
-	log.Println("generating new account")
+	slog.Info("generating new account")
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
