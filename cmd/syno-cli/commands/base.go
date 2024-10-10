@@ -51,14 +51,16 @@ type Logging struct {
 }
 
 func (l *Logging) SetupLogging() {
-	if !l.Debug {
-		return
-	}
 	lvl := new(slog.LevelVar)
-	lvl.Set(slog.LevelDebug)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: lvl,
 	}))
+	if l.Debug {
+		lvl.Set(slog.LevelDebug)
+	} else {
+		lvl.Set(slog.LevelInfo)
+	}
+
 	slog.SetDefault(logger)
 }

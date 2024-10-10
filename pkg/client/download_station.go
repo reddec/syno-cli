@@ -35,24 +35,26 @@ type DownloadTask struct {
 }
 
 type DownloadTasks struct {
-	Total  int64 `json:"total"`
-	Offset int64 `json:"offset"`
-	Tasks  []struct {
-		Id         string `json:"id"`
-		Type       string `json:"type"`
-		Username   string `json:"username"`
-		Title      string `json:"title"`
-		Size       int64  `json:"size"`
-		Status     string `json:"status"`
-		Additional struct {
-			Detail struct {
-				CreateTime  int64  `json:"create_time"`
-				Destination string `json:"destination"`
-				Priority    string `json:"priority"`
-				Uri         string `json:"uri"`
-			} `json:"detail"`
-		} `json:"additional"`
-	} `json:"tasks"`
+	Total  int64           `json:"total"`
+	Offset int64           `json:"offset"`
+	Tasks  []ScheduledTask `json:"tasks"`
+}
+
+type ScheduledTask struct {
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	Username   string `json:"username"`
+	Title      string `json:"title"`
+	Size       int64  `json:"size"`
+	Status     string `json:"status"`
+	Additional struct {
+		Detail struct {
+			CreateTime  int64  `json:"create_time"`
+			Destination string `json:"destination"`
+			Priority    string `json:"priority"`
+			Uri         string `json:"uri"`
+		} `json:"detail"`
+	} `json:"additional"`
 }
 
 // DownloadStation API. Enhanced by some undocumented API from JS.

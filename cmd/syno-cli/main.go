@@ -27,6 +27,7 @@ type Config struct {
 	} `command:"cert" description:"manager certificates" alias:"certificates" alias:"certificate" alias:"certs" alias:"cert" alias:"c"`
 	DS struct {
 		Create commands.DsCreate `command:"create" description:"create task" alias:"add" alias:"new" alias:"c"`
+		List   commands.DsList   `command:"list" description:"list tasks" alias:"ls" alias:"l"`
 	} `command:"ds" description:"download station" alias:"download-station" alias:"download" alias:"dl" alias:"d"`
 }
 

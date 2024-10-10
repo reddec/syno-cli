@@ -9,7 +9,7 @@ local:
 	mkdir -p dist
 	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o dist/syno-cli ./cmd/syno-cli
 	cp Dockerfile.release dist/Dockerfile
-	cd dist && docker build -t ingress-dashboard .
+	cd dist && docker build -t syno-cli .
 
 # Generate test certs
 # https://github.com/FiloSottile/mkcert
