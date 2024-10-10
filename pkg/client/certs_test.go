@@ -29,15 +29,15 @@ func TestClient_UploadCert(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	ca, err := os.Open(filepath.Join("test-data", "rootCA.pem"))
+	ca, err := os.Open(filepath.Join("../../test-data", "rootCA.pem"))
 	require.NoError(t, err)
 	defer ca.Close()
 
-	key, err := os.Open(filepath.Join("test-data", "example.com-key.pem"))
+	key, err := os.Open(filepath.Join("../../test-data", "example.com-key.pem"))
 	require.NoError(t, err)
 	defer key.Close()
 
-	cert, err := os.Open(filepath.Join("test-data", "example.com.pem"))
+	cert, err := os.Open(filepath.Join("../../test-data", "example.com.pem"))
 	require.NoError(t, err)
 	defer cert.Close()
 
@@ -57,15 +57,15 @@ func TestClient_DeleteCertByID(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	ca, err := os.Open(filepath.Join("test-data", "rootCA.pem"))
+	ca, err := os.Open(filepath.Join("../../test-data", "rootCA.pem"))
 	require.NoError(t, err)
 	defer ca.Close()
 
-	key, err := os.Open(filepath.Join("test-data", "example.com-key.pem"))
+	key, err := os.Open(filepath.Join("../../test-data", "example.com-key.pem"))
 	require.NoError(t, err)
 	defer key.Close()
 
-	cert, err := os.Open(filepath.Join("test-data", "example.com.pem"))
+	cert, err := os.Open(filepath.Join("../../test-data", "example.com.pem"))
 	require.NoError(t, err)
 	defer cert.Close()
 
