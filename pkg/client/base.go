@@ -324,8 +324,7 @@ func streamData(fields []field) (string, io.ReadCloser) {
 		}
 		_ = writer.CloseWithError(err)
 	}()
-
-	return "multipart/form-data; boundary=" + mp.Boundary(), reader
+	return mp.FormDataContentType(), reader
 }
 
 func joinParams(params []field) string {
@@ -336,7 +335,11 @@ func joinParams(params []field) string {
 		}
 		buffer.WriteString(url.QueryEscape(field.Name))
 		buffer.WriteRune('=')
-		buffer.WriteString(url.QueryEscape(fmt.Sprint(field.Value)))
+		if v, ok := field.Value.([]byte); ok {
+			buffer.WriteString(url.QueryEscape(string(v)))
+		} else {
+			buffer.WriteString(url.QueryEscape(fmt.Sprint(field.Value)))
+		}
 	}
 	return buffer.String()
 }
