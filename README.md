@@ -17,6 +17,10 @@ Supports:
 * As [CLI](https://github.com/reddec/syno-cli/releases/latest) and
   as [library](https://pkg.go.dev/github.com/reddec/syno-cli)
 
+## Development notes
+
+- Stable are only tags prefixed by `v` (ex: `v0.1.4`)
+
 ## Installation
 
 * Pre-built binaries from [releases](https://github.com/reddec/syno-cli/releases/latest)
