@@ -13,16 +13,12 @@ import (
 	"time"
 )
 
-type FileType string
+//go:generate go run github.com/abice/go-enum@v0.6.0 -values
 
-// Supported file types.
+// FileType defines content type.
 // Extracted from 'allowfilters' in JS (download.js)
-const (
-	FileTypeUnknown FileType = ""
-	FileTypeTorrent FileType = "torrent"
-	FileTypeNZB     FileType = "nzb"
-	FileTypeTxt     FileType = "txt"
-)
+// ENUM(unknown = "", auto, torrent, nzb, txt)
+type FileType string
 
 var ErrUnknownFileType = errors.New("unknown file type")
 
@@ -108,6 +104,7 @@ func (ds *DownloadStation) Create(ctx context.Context, task DownloadTask) error 
 
 // download task in DownloadStation based on configuration.  Uses Synology legacy API
 func (ds *DownloadStation) createV1(ctx context.Context, task DownloadTask) error {
+	slog.Debug("using v1 protocol")
 	if err := ds.cl.Login(ctx); err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
@@ -130,6 +127,7 @@ func (ds *DownloadStation) createV1(ctx context.Context, task DownloadTask) erro
 // download task in DownloadStation based on configuration. Uses Synology2 API.
 // Applies only for file uploads.
 func (ds *DownloadStation) createV2(ctx context.Context, task DownloadTask) error {
+	slog.Debug("using v2 protocol")
 	if err := ds.cl.Login(ctx); err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
@@ -146,7 +144,7 @@ func (ds *DownloadStation) createV2(ctx context.Context, task DownloadTask) erro
 	params = setIfNotEmpty(params, "unzip_password", task.UnzipPassword)
 	params = append(params, field{Name: "type", Value: `"file"`})
 
-	if task.FileType == FileTypeUnknown {
+	if task.FileType == FileTypeAuto || task.FileType == FileTypeUnknown {
 		// detect by sniffing the payload (as best as we can; we can just a few)
 		peek := make([]byte, peekSize)
 		n, err := io.ReadFull(task.File, peek)
@@ -194,7 +192,7 @@ func detectType(peek []byte) (FileType, error) {
 	case bytes.HasPrefix(peek, []byte("d8:announce")):
 		return FileTypeTorrent, nil
 	case bytes.Contains(peek, []byte("<nzb")) || bytes.Contains(peek, []byte(":nzb")): // targeting xml tag nzb with xmlns or with ns
-		return FileTypeNZB, nil
+		return FileTypeNzb, nil
 	case hasAnyPrefix(peek, "http://", "https://", "ftp://", "thunder://", "flashget://", "qqdl://", "magnet:"):
 		// assuming this is file with list of urls
 		return FileTypeTxt, nil

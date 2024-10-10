@@ -13,6 +13,14 @@ local:
 
 # Generate test certs
 # https://github.com/FiloSottile/mkcert
-gen-certs:
+gen-certs: test-data
 	mkdir -p test-data
 	cd test-data && CAROOT=. go run filippo.io/mkcert@v1.4.4 example.com
+
+
+# Generate go code
+generate:
+	go generate ./...
+
+
+.PHONY: generate

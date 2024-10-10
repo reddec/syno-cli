@@ -14,9 +14,16 @@ SYNOLOGY_USER=
 SYNOLOGY_PASSWORD=
 ```
 
+you may use [direnv](https://direnv.net/) for automatic load
+
 it `.gitignore`'d and automatically loaded in tests.
 
 
 ### Generate test certificates
 
     make gen-certs
+
+
+### Generate code
+
+    make generate

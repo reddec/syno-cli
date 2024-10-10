@@ -28,3 +28,13 @@ func (ct *CTime) MarshalJSON() ([]byte, error) {
 func (ct CTime) Time() time.Time {
 	return time.Time(ct)
 }
+
+// UnmarshalFlag is an adapter for go-flags.
+func (ft *FileType) UnmarshalFlag(value string) error {
+	v, err := ParseFileType(value)
+	if err != nil {
+		return err
+	}
+	*ft = v
+	return nil
+}

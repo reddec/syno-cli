@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/jessevdk/go-flags"
+
 	"github.com/reddec/syno-cli/cmd/syno-cli/commands"
 )
 
@@ -24,6 +25,9 @@ type Config struct {
 		Delete commands.CertsDelete `command:"delete" description:"delete certificate" alias:"remove" alias:"rm"  alias:"del" alias:"d"`
 		Auto   commands.CertsAuto   `command:"auto" description:"automatically issue and push certificates" alias:"dns01" alias:"lego" alias:"a"`
 	} `command:"cert" description:"manager certificates" alias:"certificates" alias:"certificate" alias:"certs" alias:"cert" alias:"c"`
+	DS struct {
+		Create commands.DsCreate `command:"create" description:"create task" alias:"add" alias:"new" alias:"c"`
+	} `command:"ds" description:"download station" alias:"download-station" alias:"download" alias:"dl" alias:"d"`
 }
 
 func main() {

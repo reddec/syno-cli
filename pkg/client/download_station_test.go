@@ -17,6 +17,14 @@ import (
 )
 
 func TestClient_Download(t *testing.T) {
+	lvl := new(slog.LevelVar)
+	lvl.Set(slog.LevelDebug)
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: lvl,
+	}))
+	slog.SetDefault(logger)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
