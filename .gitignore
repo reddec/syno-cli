@@ -4,3 +4,4 @@ test-data
 /dist
 /build
 .cache
+.env.local

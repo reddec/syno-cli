@@ -42,7 +42,7 @@ func environ() func(string) string {
 		env[parts[0]] = parts[1]
 	}
 
-	f, err := os.Open(".env")
+	f, err := os.Open("../../.env")
 	if err != nil {
 		log.Println("env not loaded:", err)
 		return os.Getenv
