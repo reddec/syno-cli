@@ -1,8 +1,6 @@
 module github.com/reddec/syno-cli
 
-go 1.22.0
-
-toolchain go1.23.1
+go 1.23.0
 
 require (
 	github.com/go-acme/lego/v4 v4.5.3
@@ -97,11 +95,11 @@ require (
 	github.com/vultr/govultr/v2 v2.7.1 // indirect
 	go.opencensus.io v0.22.3 // indirect
 	go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277 // indirect
-	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
+	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
-	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6 // indirect
 	google.golang.org/api v0.20.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
