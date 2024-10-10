@@ -7,14 +7,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
+	"net/http/cookiejar"
 	"net/textproto"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const (
@@ -36,7 +40,7 @@ func (hf HTTPClientFunc) Do(req *http.Request) (*http.Response, error) {
 }
 
 type Config struct {
-	Client   HTTPClient // HTTP client to perform requests, default is http.DefaultClient
+	Client   HTTPClient // HTTP client to perform requests, default is new HTTP client. Client MUST support cookies. Keep it nil for most cases is a good idea.
 	User     string     // User name
 	Password string     // User password
 	URL      string     // Synology url, default is http://localhost:5000
@@ -64,7 +68,14 @@ func FromEnv(envFunc func(string) string) Config {
 // New instance of Synology API client.
 func New(cfg Config) *Client {
 	if cfg.Client == nil {
-		cfg.Client = http.DefaultClient
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			panic(err) // CAN NOT happen at go 1.23
+		}
+		cfg.Client = &http.Client{
+			Jar:     jar,
+			Timeout: time.Second * 30,
+		}
 	}
 	if cfg.URL == "" {
 		cfg.URL = "http://localhost:5000"
@@ -85,9 +96,8 @@ type Client struct {
 	user        string
 	password    string
 	baseURL     string
+	authorized  atomic.Bool
 	authLock    sync.Mutex
-	token       string
-	sid         string
 	versionLock sync.Mutex
 	versions    map[string]API
 }
@@ -104,8 +114,6 @@ func (cl *Client) WithClient(client HTTPClient) *Client {
 		user:     cl.user,
 		password: cl.password,
 		baseURL:  cl.baseURL,
-		token:    cl.token,
-		sid:      cl.sid,
 		versions: cl.versions,
 	}
 }
@@ -135,30 +143,29 @@ func (cl *Client) APIVersion(ctx context.Context, apiName string) (API, error) {
 
 // Login to Synology and get token. Token will be cached. If token already obtained, API call will not be executed.
 func (cl *Client) Login(ctx context.Context) error {
-	if cl.token != "" {
+	if cl.authorized.Load() {
 		return nil
 	}
 
 	cl.authLock.Lock()
 	defer cl.authLock.Unlock()
-	if cl.token != "" {
+	if cl.authorized.Load() {
 		return nil
 	}
 
-	var response struct {
-		Sid   string `json:"sid"`
-		Token string `json:"synotoken"`
-	}
-	err := cl.callAPI(ctx, "SYNO.API.Auth", "login", map[string]interface{}{
-		"enable_syno_token": "yes",
-		"account":           cl.user,
-		"passwd":            cl.password,
-	}, &response)
+	res, err := cl.directCall(ctx, "SYNO.API.Auth", "login", []field{
+		{Name: "enable_syno_token", Value: "no"},
+		{Name: "account", Value: cl.user},
+		{Name: "passwd", Value: cl.password},
+		{Name: "format", Value: "cookie"},
+	})
 	if err != nil {
 		return fmt.Errorf("invoke api: %w", err)
 	}
-	cl.token = response.Token
-	cl.sid = response.Sid
+
+	defer res.Body.Close()
+	_, _ = io.Copy(io.Discard, res.Body)
+	cl.authorized.Store(true)
 	return nil
 }
 
@@ -177,7 +184,6 @@ func (cl *Client) callAPI(ctx context.Context, apiName, method string, params ma
 		"method":  method,
 		"api":     apiName,
 		"version": info.MaxVersion,
-		"_sid":    cl.sid,
 	}
 
 	// if it's not upload, we can merge transport params into payload
@@ -211,7 +217,6 @@ func (cl *Client) doPost(ctx context.Context, path string, queryParams map[strin
 		return fmt.Errorf("prepare request: %w", err)
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("X-Syno-Token", cl.token)
 
 	res, err := cl.client.Do(req)
 	if err != nil {
@@ -251,9 +256,8 @@ func (cl *Client) directCall(ctx context.Context, apiName string, method string,
 		{Name: "api", Value: apiName},
 		{Name: "version", Value: info.MaxVersion},
 		{Name: "method", Value: method},
-		{Name: "_sid", Value: cl.sid},
 	}, params...)
-	requestURL := cl.baseURL + "/webapi/" + info.Path
+	requestURL := cl.baseURL + "/webapi/" + info.Path + "/" + apiName
 
 	var contentType string
 	var content io.ReadCloser
@@ -264,12 +268,12 @@ func (cl *Client) directCall(ctx context.Context, apiName string, method string,
 	}
 	defer content.Close()
 
+	slog.Debug("API request prepared", "url", requestURL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, content)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("X-Syno-Token", cl.token)
 
 	res, err := cl.client.Do(req)
 	if err != nil {
@@ -378,7 +382,6 @@ func streamMultipart(fields []field, w *multipart.Writer) error {
 		case string:
 			h := make(textproto.MIMEHeader)
 			h.Set("Content-Disposition", `form-data; name=`+strconv.Quote(field.Name))
-			h.Set("Content-Type", "text/plain")
 
 			out, err := w.CreatePart(h)
 			if err != nil {
