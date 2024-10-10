@@ -1,21 +1,25 @@
 run:
   tests: false
-  skip-dirs:
+issues:
+  exclude-dirs:
     - cmd
+    - dist
+    - test-data
 linters:
   disable:
     - lll
     - gci
     - wsl
+    - godot
     - tagliatelle
-    - exhaustivestruct
+    - exhaustruct
     - nakedret
-    - maligned
     - gofumpt
     - cyclop
     - wrapcheck
     - varnamelen
     - nlreturn
+    - gomnd
   enable-all: true
 linters-settings:
   funlen:

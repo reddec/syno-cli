@@ -52,7 +52,7 @@ type ScheduledTask struct {
 			CreateTime  int64  `json:"create_time"`
 			Destination string `json:"destination"`
 			Priority    string `json:"priority"`
-			Uri         string `json:"uri"`
+			URI         string `json:"uri"`
 		} `json:"detail"`
 	} `json:"additional"`
 }

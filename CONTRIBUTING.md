@@ -5,6 +5,7 @@ Requires:
 - Synology NAS with DSM 7+
 - Go 1.23+
 - Make
+- [Linter](https://golangci-lint.run/) 1.61.0 +
 
 Place in `.env` configuration
 
@@ -27,3 +28,7 @@ it `.gitignore`'d and automatically loaded in tests.
 ### Generate code
 
     make generate
+
+### Run linters
+
+    make lint

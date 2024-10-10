@@ -27,6 +27,8 @@ const (
 	EnvPass = "SYNOLOGY_PASSWORD" //nolint:gosec
 )
 
+const DefaultTimeout = 30 * time.Second
+
 var ErrBadStatus = errors.New("bad response status")
 
 type HTTPClient interface {
@@ -74,7 +76,7 @@ func New(cfg Config) *Client {
 		}
 		cfg.Client = &http.Client{
 			Jar:     jar,
-			Timeout: time.Second * 30,
+			Timeout: DefaultTimeout,
 		}
 	}
 	if cfg.URL == "" {
@@ -281,6 +283,7 @@ func (cl *Client) directCall(ctx context.Context, apiName string, method string,
 	}
 	defer res.Body.Close()
 
+	//nolint:mnd
 	if res.StatusCode/100 != 2 {
 		_ = res.Body.Close()
 		return nil, fmt.Errorf("status %d: %w", res.StatusCode, ErrBadStatus)
@@ -288,7 +291,7 @@ func (cl *Client) directCall(ctx context.Context, apiName string, method string,
 
 	// try to parse body as API response
 	var buffer bytes.Buffer
-	if err := asApiError(io.TeeReader(res.Body, &buffer)); err != nil {
+	if err := asAPIError(io.TeeReader(res.Body, &buffer)); err != nil {
 		_ = res.Body.Close()
 		return nil, fmt.Errorf("application API error: %w", err)
 	}
@@ -300,12 +303,12 @@ func (cl *Client) directCall(ctx context.Context, apiName string, method string,
 	return res, nil
 }
 
-func asApiError(data io.Reader) error {
+func asAPIError(data io.Reader) error {
 	var rawResponse apiResponse
 
 	err := json.NewDecoder(data).Decode(&rawResponse)
 	if err != nil {
-		return nil
+		return fmt.Errorf("decode response: %w", err)
 	}
 	if !rawResponse.Success {
 		return rawResponse.Error
@@ -448,20 +451,12 @@ type RemoteError struct {
 }
 
 func (e *RemoteError) Error() string {
-	return "API error code: " + strconv.FormatInt(e.Code, 10) //nolint:gomnd
+	return "API error code: " + strconv.FormatInt(e.Code, 10)
 }
 
 type readCloser struct {
 	io.Reader
 	io.Closer
-}
-
-func fieldsToMap(fields []field) map[string]interface{} {
-	mp := make(map[string]interface{}, len(fields))
-	for _, v := range fields {
-		mp[v.Name] = v.Value
-	}
-	return mp
 }
 
 // deprecated, used for compatibility only
