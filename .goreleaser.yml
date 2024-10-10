@@ -9,6 +9,8 @@ builds:
     goarch:
       - arm64
       - amd64
+    flags:
+      - -trimpath
     main: ./cmd/syno-cli
 checksum:
   name_template: 'checksums.txt'
